@@ -56,11 +56,12 @@ public class MainMenu extends GameScreen {
 		//Mid Panel
 			fillPanel(g, 335, 10, 935, 500);
 			//Looping through data for the prices
+			g.setColor(AppColors.BLACK);
 			AppData[] data = sdh.getCurrentData();
 			for(int i = 1; i < data.length; i++) {
 				AppData prevData = data[i-1];
 				AppData currData = data[i];
-				g.drawLine((i-1), (int)prevData.getClose(), i, (int)currData.getClose());
+				g.drawLine(342+10*(i-1), 490-((int)prevData.getClose())*5, 342+5*i, 490-((int)currData.getClose())*10);
 			}
 		//Bottom Panel
 			fillPanel(g, 335, 520, 935, 190);

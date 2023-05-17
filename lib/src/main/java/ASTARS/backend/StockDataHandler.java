@@ -62,36 +62,40 @@ public class StockDataHandler {
 		for(Asset asset : watchlist.getAssets()) {
 			StockBarsResponse bars = getBars(date, asset.getSymbol());
 			if(bars.getBars() != null) {
-				addStock(date, asset.getSymbol(), bars.getBars());
+				addStock(ZonedDateTime.ofInstant(date.toInstant(), EST).minusDays(STOCK_DAYS), asset.getSymbol(), bars.getBars());
 			}
 		}
 	}
 	
 	/**
 	 * Sets the needed data for the appropriate ticker
+	 * @param date ZonedDateTime referencing to (date - STOCK_DAYS)
 	 * @param ticker Ticker for the data collected
 	 * @param bars the RAW data collected
 	 */
-	private void addStock(Date date, String ticker, ArrayList<StockBar> bars) {
+	private void addStock(ZonedDateTime date, String ticker, ArrayList<StockBar> bars) {
 		AppData[] data = new AppData[STOCK_DAYS*24];
 		StockBar[] newBars = new StockBar[data.length]; //so you can use the "correct" bars
-		Arrays.fill(newBars, bars.get(0)); //fill all bars with first bar
 		//place bars in correct order
-		//TODO: Setup newBars to use the date as the 0 position, then fill Array based on hours
-		for(int i = 1; i < bars.size(); i++) {
-			/*int prevIndex = bars.get(i-1).getTimestamp().getHour();
-			if(i == bars.size()-1) {
+		int prevIndex = 0;
+		for(int i = 0; i < bars.size(); i++) { //Starts with the furthest date
+			if(i == 0) { //First One
+				Duration difference = Duration.between(date.toInstant(), bars.get(i).getTimestamp().toInstant());
+				prevIndex = (int)difference.toHours();
+				Arrays.fill(newBars, 0, prevIndex+1, bars.get(i));
+			}else if(i == bars.size()-1) { // Last One
 				Arrays.fill(newBars, prevIndex, newBars.length, bars.get(i));
 			}else {
-				Duration difference = Duration.between(bars.get(i-1).getTimestamp(), bars.get(i).getTimestamp());
-				Arrays.fill(newBars, prevIndex, (int)difference.toHours(), bars.get(i));
-			}*/
+				Duration difference = Duration.between(bars.get(i).getTimestamp(), bars.get(i+1).getTimestamp());
+				Arrays.fill(newBars, prevIndex, prevIndex+(int)difference.toHours()+1, bars.get(i));
+				prevIndex += (int) difference.toHours();
+			}
 		}
 		for(int i = 0; i < data.length; i++) {
 			if(i < 26) {
-				data[i] = new AppData((i-1 > -1 ? data[i-1] : null), i+1, bars.get(i));
+				data[i] = new AppData((i-1 > -1 ? data[i-1] : null), i+1, newBars[i]);
 			}else {
-				data[i] = new AppData(data[i-1], bars.get(i));
+				data[i] = new AppData(data[i-1], newBars[i]);
 			}
 		}
 		tickers = Arrays.copyOf(tickers, tickers.length+1);
@@ -123,7 +127,7 @@ public class StockDataHandler {
 					STOCK_DAYS*24, null,
 					1,
 					BarTimePeriod.HOUR,
-					BarAdjustment.RAW,
+					BarAdjustment.ALL,
 					BarFeed.IEX);
 			System.out.println("Recieved Data for "+barsResponse.getSymbol());
 			return barsResponse;
